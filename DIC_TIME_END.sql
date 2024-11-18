@@ -1,0 +1,53 @@
+--當前時間為2023、2024年時僅開放查一年條件未開
+
+WITH ALL_TIME AS(
+--今年1月～當前月+前五年所有月份
+SELECT 
+        'monthly' AS CATEGORY,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'mm'),-ROWNUM + 1),'yyyy-mm') AS DATA_DATE,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'mm'),-ROWNUM + 1),'yyyy-mm-dd') AS START_TIME,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'mm'),-ROWNUM + 2)-1,'yyyy-mm-dd') AS END_TIME
+FROM DUAL
+CONNECT BY ROWNUM <= TO_CHAR(SYSDATE,'mm') + 60
+UNION ALL
+--今年第1季～當前季+前五年所有季
+SELECT 
+        'quarterly' AS CATEGORY,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'q'),-ROWNUM*3 +3),'yyyy-"Q"q') AS DATA_DATE,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'q'),-ROWNUM*3 +3),'yyyy-mm-dd') AS START_TIME,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'q'),-ROWNUM*3 +6)-1,'yyyy-mm-dd') AS END_TIME
+FROM DUAL
+CONNECT BY ROWNUM <= TO_CHAR(SYSDATE,'q') + 20
+UNION ALL
+--今年H1(+H2)+前五年中所有半年
+SELECT 
+        'half-yearly' AS CATEGORY,
+        CONCAT(TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*6 +6),'yyyy-"H"'),
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*6 +12)-1,'mm')/6) AS DATA_DATE,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*6 +6),'yyyy-mm-dd') AS START_TIME,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*6 +12)-1,'yyyy-mm-dd') AS END_TIME
+FROM DUAL
+CONNECT BY ROWNUM <= TO_CHAR(SYSDATE,'q')/2 + 10
+UNION ALL
+--當前年+前五年
+SELECT 
+        'yearly' AS CATEGORY,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*12 +12),'yyyy') AS DATA_DATE,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*12 +12),'yyyy-mm-dd') AS START_TIME,
+        TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'yyyy'),-ROWNUM*12 +24)-1,'yyyy-mm-dd') AS END_TIME
+FROM DUAL
+CONNECT BY ROWNUM <=  6
+)
+SELECT
+        --CATEGORY,
+        DATA_DATE,
+        --START_TIME,
+        END_TIME
+FROM ALL_TIME
+WHERE CATEGORY = '${P_TIME_UNIT}'
+${IF(LEN(P_TIME_START)=0,"","AND START_TIME >= TO_DATE('"+P_TIME_START+"','yyyy-mm-dd')")}
+${IF(P_TIME_UNIT='yearly',"AND START_TIME BETWEEN TO_DATE('"+P_TIME_START+"','yyyy-mm-dd') AND ADD_MONTHS(TO_DATE('"+P_TIME_START+"','yyyy-mm-dd'),12)","")}
+${IF(P_TIME_UNIT='monthly',"AND START_TIME BETWEEN TO_DATE('"+P_TIME_START+"','yyyy-mm-dd') AND ADD_MONTHS(TO_DATE('"+P_TIME_START+"','yyyy-mm-dd'),12)","")}
+${IF(P_TIME_UNIT='quarterly',"AND START_TIME BETWEEN TO_DATE('"+P_TIME_START+"','yyyy-mm-dd') AND ADD_MONTHS(TO_DATE('"+P_TIME_START+"','yyyy-mm-dd'),12)","")}
+${IF(P_TIME_UNIT='half-yearly',"AND START_TIME BETWEEN TO_DATE('"+P_TIME_START+"','yyyy-mm-dd') AND ADD_MONTHS(TO_DATE('"+P_TIME_START+"','yyyy-mm-dd'),12)","")}
+ORDER BY DATA_DATE DESC
